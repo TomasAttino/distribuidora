@@ -15,14 +15,26 @@ type Product = {
   oldPrice: number | null
   isFeatured: boolean
   isNewArrival: boolean
+  inStock: boolean
 }
 
-export default function ProductsClient({ initialProducts }: { initialProducts: Product[] }) {
+type Category = {
+  id: number
+  name: string
+}
+
+export default function ProductsClient({ initialProducts, categories }: { initialProducts: Product[], categories: Category[] }) {
   const [products, setProducts] = useState(initialProducts)
+  const [searchTerm, setSearchTerm] = useState("")
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<Partial<Product>>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const router = useRouter()
+
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.code.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   const startEdit = (prod: Product) => {
     setEditingId(prod.id)
@@ -82,9 +94,18 @@ export default function ProductsClient({ initialProducts }: { initialProducts: P
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+      <div className="p-6 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-800">Productos Activos ({products.length})</h2>
+        </div>
+        <div className="flex-1 max-w-md w-full">
+          <input 
+            type="text" 
+            placeholder="Buscar por nombre o código..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+          />
         </div>
       </div>
 
@@ -100,8 +121,13 @@ export default function ProductsClient({ initialProducts }: { initialProducts: P
             </tr>
           </thead>
           <tbody>
-            {products.map((prod) => (
-              <tr key={prod.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+            {filteredProducts.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-slate-500">No se encontraron productos probando la búsqueda actual.</td>
+              </tr>
+            ) : (
+             filteredProducts.map((prod) => (
+              <tr key={prod.id} className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors ${!prod.inStock && 'opacity-60 bg-slate-50'}`}>
                 <td className="p-4">
                   <div className="w-12 h-12 rounded bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                     {prod.imageUrl ? (
@@ -123,15 +149,26 @@ export default function ProductsClient({ initialProducts }: { initialProducts: P
                         placeholder="Nombre completo"
                       />
                       <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          value={editForm.category || ""} 
+                        <select
+                          value={editForm.category || ""}
                           onChange={e => setEditForm({...editForm, category: e.target.value})}
                           className="border p-2 rounded text-sm w-1/2"
-                          placeholder="Categoría"
-                        />
+                        >
+                          <option value="">Sin categoría</option>
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                          ))}
+                        </select>
                       <div className="flex gap-2 flex-wrap text-slate-700">
-                        <label className="flex items-center gap-2 border p-2 rounded text-sm bg-white">
+                        <label className="flex items-center gap-2 border p-2 rounded text-sm bg-white cursor-pointer select-none">
+                          <input 
+                            type="checkbox" 
+                            checked={editForm.inStock ?? true}
+                            onChange={e => setEditForm({...editForm, inStock: e.target.checked})}
+                          />
+                          📦 En Stock
+                        </label>
+                        <label className="flex items-center gap-2 border p-2 rounded text-sm bg-white cursor-pointer select-none">
                           <input 
                             type="checkbox" 
                             checked={editForm.isPromo || false}
@@ -139,7 +176,7 @@ export default function ProductsClient({ initialProducts }: { initialProducts: P
                           />
                           🔥 Oferta
                         </label>
-                        <label className="flex items-center gap-2 border p-2 rounded text-sm bg-white">
+                        <label className="flex items-center gap-2 border p-2 rounded text-sm bg-white cursor-pointer select-none">
                           <input 
                             type="checkbox" 
                             checked={editForm.isFeatured || false}
@@ -147,7 +184,7 @@ export default function ProductsClient({ initialProducts }: { initialProducts: P
                           />
                           ⭐ Favorito
                         </label>
-                        <label className="flex items-center gap-2 border p-2 rounded text-sm bg-white">
+                        <label className="flex items-center gap-2 border p-2 rounded text-sm bg-white cursor-pointer select-none">
                           <input 
                             type="checkbox" 
                             checked={editForm.isNewArrival || false}
@@ -167,8 +204,9 @@ export default function ProductsClient({ initialProducts }: { initialProducts: P
                     </div>
                   ) : (
                     <div>
-                      <div className="font-medium text-slate-800 flex items-center gap-2">
+                      <div className="font-medium text-slate-800 flex items-center gap-2 flex-wrap">
                         {prod.name}
+                        {!prod.inStock && <span className="bg-slate-800 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Sin Stock</span>}
                         {prod.isPromo && <span className="bg-red-500 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Promo</span>}
                         {prod.isFeatured && <span className="bg-amber-400 text-amber-900 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Fav</span>}
                         {prod.isNewArrival && <span className="bg-sky-500 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Nuevo</span>}
@@ -232,7 +270,8 @@ export default function ProductsClient({ initialProducts }: { initialProducts: P
                   </div>
                 </td>
               </tr>
-            ))}
+             ))
+            )}
           </tbody>
         </table>
       </div>

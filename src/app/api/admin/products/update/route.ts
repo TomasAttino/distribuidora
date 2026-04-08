@@ -19,7 +19,8 @@ export async function PUT(request: Request) {
         isPromo: data.isPromo,
         oldPrice: data.oldPrice,
         isFeatured: data.isFeatured,
-        isNewArrival: data.isNewArrival
+        isNewArrival: data.isNewArrival,
+        inStock: data.inStock
       }
     });
 

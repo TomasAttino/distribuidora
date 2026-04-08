@@ -21,6 +21,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/products" className="block p-3 rounded hover:bg-slate-800 transition-colors">
             📚 Catálogo General
           </Link>
+          <Link href="/admin/categories" className="block p-3 rounded hover:bg-slate-800 transition-colors">
+            📂 Categorías
+          </Link>
           <Link href="/admin/carousel" className="block p-3 rounded hover:bg-slate-800 transition-colors">
             🖼️ Carrusel Principal
           </Link>

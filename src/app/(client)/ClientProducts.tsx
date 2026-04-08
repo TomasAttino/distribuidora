@@ -1,28 +1,17 @@
 "use client"
 import { useCart } from "@/context/CartContext"
-import { Search } from "lucide-react"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
+import { Minus, Plus, Trash2, Search } from "lucide-react"
 import { useSearchParams } from "next/navigation"
-
-type Product = {
-  id: number
-  code: string
-  name: string
-  price: number
-  category: string | null
-  brand: string | null
-  imageUrl: string | null
-  isPromo: boolean
-  oldPrice: number | null
-  isFeatured?: boolean
-  isNewArrival?: boolean
-}
+import type { Product } from "@prisma/client"
 
 export default function ClientProducts({ products }: { products: Product[] }) {
-  const { addToCart } = useCart()
+  const { items, addToCart, updateQuantity, removeFromCart } = useCart()
   const searchParams = useSearchParams()
   const [searchTerm, setSearchTerm] = useState("")
   const [activeCategory, setActiveCategory] = useState(searchParams.get("cat") || "Todos")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
 
   const categories = useMemo(() => {
     const cats = new Set(products.map(p => p.category).filter(Boolean))
@@ -44,6 +33,17 @@ export default function ClientProducts({ products }: { products: Product[] }) {
       return matchesSearch && matchesCategory;
     });
   }, [products, searchTerm, activeCategory]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeCategory]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const currentProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
+  };
 
   return (
     <main className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto flex flex-col gap-6">
@@ -72,14 +72,18 @@ export default function ClientProducts({ products }: { products: Product[] }) {
       {filteredProducts.length === 0 ? (
         <div className="text-center py-20 text-slate-500 font-medium">No se encontraron productos.</div>
       ) : (
+        <>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {filteredProducts.map((product) => (
-            <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden flex flex-col hover:shadow-md hover:border-pink-200 transition-all group">
+          {currentProducts.map((product) => {
+            const cartItem = items.find(i => i.id === product.id);
+
+            return (
+            <div key={product.id} className={`bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden flex flex-col hover:shadow-md transition-all group ${!product.inStock ? 'opacity-70' : 'hover:border-pink-200'}`}>
               <div className="aspect-[4/3] bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center relative overflow-hidden">
                  {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={product.imageUrl} alt={product.name} className={`w-full h-full object-cover transition-transform duration-300 ${product.inStock ? 'group-hover:scale-105' : 'grayscale'}`} />
                  ) : (
-                    <span className="text-4xl filter drop-shadow-sm group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-4xl filter drop-shadow-sm transition-transform duration-300">
                       {product.category === 'Bebidas' ? '🥤' : product.category === 'Snacks' ? '🥔' : product.category === 'Cigarrillos' ? '🚬' : '🍫'}
                     </span>
                  )}
@@ -88,11 +92,15 @@ export default function ClientProducts({ products }: { products: Product[] }) {
                      {product.category}
                    </div>
                  )}
-                 {product.isPromo && (
+                 {!product.inStock ? (
+                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/80 text-white px-4 py-2 font-black tracking-widest text-sm rounded shadow-xl backdrop-blur-sm -rotate-12 w-11/12 text-center border-2 border-slate-700">
+                     SIN STOCK
+                   </div>
+                 ) : product.isPromo ? (
                    <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] uppercase font-black px-2 py-1.5 rounded tracking-widest shadow-md z-10 transform rotate-3">
                      🔥 Oferta
                    </div>
-                 )}
+                 ) : null}
               </div>
               <div className="p-4 flex-1 flex flex-col border-t border-slate-50 relative">
                 {product.brand && <span className="text-xs text-pink-600 font-black tracking-wide uppercase mb-1">{product.brand}</span>}
@@ -101,23 +109,81 @@ export default function ClientProducts({ products }: { products: Product[] }) {
                 <div className="mb-4">
                   {product.isPromo && product.oldPrice && (
                     <span className="text-xs text-slate-400 line-through tracking-tight mr-2 block -mb-0.5">
-                       ${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(product.oldPrice)}
+                       {formatPrice(product.oldPrice)}
                     </span>
                   )}
                   <div className="font-black text-xl text-slate-900 flex items-center gap-2">
-                     ${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(product.price)}
+                     {formatPrice(product.price)}
                   </div>
                 </div>
-                <button 
-                  onClick={() => addToCart({ ...product, imageUrl: product.imageUrl || undefined })}
-                  className="w-full bg-pink-50 text-pink-700 hover:bg-pink-600 hover:text-white font-bold py-3 rounded-xl transition-all active:scale-[0.97] text-sm flex items-center justify-center gap-2 group-hover:shadow-sm"
-                >
-                  Agregar
-                </button>
+
+                {!product.inStock ? (
+                  <button disabled className="w-full bg-slate-100 text-slate-400 font-bold py-3 rounded-xl text-sm flex items-center justify-center">
+                    Agotado
+                  </button>
+                ) : cartItem ? (
+                  <div className="flex bg-pink-100 rounded-xl overflow-hidden shadow-sm border border-pink-200">
+                    <button 
+                      onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
+                      className="p-3 text-pink-700 hover:bg-pink-200 transition-colors active:scale-95 touch-manipulation"
+                    >
+                      {cartItem.quantity === 1 ? <Trash2 size={18} /> : <Minus size={18} />}
+                    </button>
+                    <div className="flex-1 flex items-center justify-center font-bold text-pink-900">
+                      {cartItem.quantity}
+                    </div>
+                    <button 
+                      onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
+                      className="p-3 text-pink-700 hover:bg-pink-200 transition-colors active:scale-95 touch-manipulation"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => addToCart({ ...product, imageUrl: product.imageUrl || undefined })}
+                    className="w-full bg-pink-50 text-pink-700 hover:bg-pink-600 hover:text-white font-bold py-3 rounded-xl transition-all active:scale-[0.97] text-sm flex items-center justify-center gap-2 group-hover:shadow-sm"
+                  >
+                    Agregar al carrito
+                  </button>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-8 py-4">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg bg-white border border-slate-200 disabled:opacity-50 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Anterior
+            </button>
+            <div className="flex gap-1 overflow-x-auto max-w-[200px] hide-scrollbar">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg text-sm font-bold transition ${currentPage === i + 1 ? 'bg-pink-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-lg bg-white border border-slate-200 disabled:opacity-50 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
+        </>
       )}
     </main>
   );

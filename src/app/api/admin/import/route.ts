@@ -35,9 +35,12 @@ export async function POST(request: Request) {
         let price = NaN;
         
         if (typeof priceRaw === 'number') {
-            price = priceRaw;
+            price = Math.round(priceRaw * 1.21);
         } else if (typeof priceRaw === 'string') {
-            price = parseFloat(priceRaw.replace(',', '.').replace(/[^0-9.-]+/g,""));
+            const rawVal = parseFloat(priceRaw.replace(',', '.').replace(/[^0-9.-]+/g,""));
+            if (!isNaN(rawVal)) {
+                price = Math.round(rawVal * 1.21);
+            }
         }
         
         if (code && name && !isNaN(price)) {
