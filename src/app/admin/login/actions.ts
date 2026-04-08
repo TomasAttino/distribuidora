@@ -4,11 +4,10 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 export async function login(formData: FormData) {
+  const username = formData.get("username")
   const password = formData.get("password")
   
-  // Aquí usamos la contraseña hardcodeada temporalmente como se solicitó
-  // Puedes cambiar "admin123" por cualquier otra, o moverla a .env
-  if (password === "admin123") {
+  if (username === "admin" && password === "admin123") {
     const cookieStore = await cookies()
     cookieStore.set("admin_token", "authenticated", {
       httpOnly: true,
@@ -18,7 +17,7 @@ export async function login(formData: FormData) {
     })
     redirect("/admin")
   } else {
-    return { error: "Contraseña incorrecta" }
+    return { error: "Usuario o contraseña incorrectos" }
   }
 }
 

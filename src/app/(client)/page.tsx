@@ -1,63 +1,125 @@
-"use client"
-import { useCart } from "@/context/CartContext"
-import { Search } from "lucide-react"
+import prisma from '@/lib/prisma'
+import Link from 'next/link'
+import HomeCarousel from './HomeCarousel'
 
-const mockProducts = [
-  { id: 1, name: "Alfajor Águila Minítorta Clásico", price: 850, category: "Golosinas", brand: "Arcor" },
-  { id: 2, name: "Coca Cola Sabor Original 1.5L", price: 2100, category: "Bebidas", brand: "Coca Cola" },
-  { id: 3, name: "Papas Lays Clásicas 145g", price: 1800, category: "Snacks", brand: "PepsiCo" },
-  { id: 4, name: "Gomitas Mogul Ositos 120g", price: 650, category: "Golosinas", brand: "Arcor" },
-  { id: 5, name: "Cigarrillos Marlboro Box 20", price: 2400, category: "Cigarrillos", brand: "Philip Morris" },
-  { id: 6, name: "Chocolate Block 170g", price: 4200, category: "Golosinas", brand: "Cofler" },
-]
+export const dynamic = 'force-dynamic';
 
-export default function ClientHome() {
-  const { addToCart } = useCart()
+export default async function HomePage() {
+  const slides = await prisma.carouselSlide.findMany({
+    where: { isActive: true },
+    orderBy: { order: 'asc' }
+  });
+
+  const featuredProducts = await prisma.product.findMany({
+    where: { isActive: true, isFeatured: true },
+    take: 8,
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const newArrivals = await prisma.product.findMany({
+    where: { isActive: true, isNewArrival: true },
+    take: 8,
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
+  };
 
   return (
-    <main className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto flex flex-col gap-6">
-      <div className="relative">
-         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-         <input 
-            type="text" 
-            placeholder="Buscar golosinas, bebidas..." 
-            className="w-full pl-12 pr-4 py-4 rounded-full border border-slate-200 shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-slate-800 transition-all font-medium"
-         />
-      </div>
+    <main className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto flex flex-col gap-10 cursor-default">
+      {/* Promos Carousel */}
+      {slides.length > 0 && <HomeCarousel slides={slides} />}
 
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x">
-        {["Todos", "Golosinas", "Bebidas", "Snacks", "Cigarrillos"].map(cat => (
-          <button key={cat} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors snap-start ${cat === "Todos" ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}>
-            {cat}
-          </button>
-        ))}
-      </div>
+      {/* Intro Banner */}
+      {slides.length === 0 && (
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-10 md:p-16 text-center text-white shadow-xl">
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-4">La Mejor Variedad para tu Kiosco</h1>
+          <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-8">Descubrí todos nuestros productos y hacé tu pedido rápido por WhatsApp con BringShop.</p>
+          <Link href="/productos" className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition">
+            Ver Catálogo Completo
+          </Link>
+        </div>
+      )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-        {mockProducts.map((product) => (
-          <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden flex flex-col hover:shadow-md hover:border-orange-200 transition-all group">
-            <div className="aspect-[4/3] bg-gradient-to-br from-slate-50 to-slate-100 p-4 flex items-center justify-center relative">
-               <span className="text-4xl filter drop-shadow-sm group-hover:scale-110 transition-transform duration-300">
-                  {product.category === 'Bebidas' ? '🥤' : product.category === 'Snacks' ? '🥔' : product.category === 'Cigarrillos' ? '🚬' : '🍫'}
-               </span>
-               <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-[10px] font-extrabold text-slate-600 px-2 py-1 rounded tracking-wider shadow-sm">
-                 {product.category}
-               </div>
+      {/* Featured Favorites Section */}
+      {featuredProducts.length > 0 && (
+        <section>
+          <div className="flex justify-between items-end mb-6 border-b border-slate-200 pb-4">
+            <div>
+              <h2 className="text-2xl font-black text-slate-800">⭐ Favoritos de la gente</h2>
+              <p className="text-sm text-slate-500 mt-1">Los combos y productos más elegidos por nuestros kiosqueros.</p>
             </div>
-            <div className="p-4 flex-1 flex flex-col border-t border-slate-50">
-              <span className="text-xs text-orange-600 font-black tracking-wide uppercase mb-1">{product.brand}</span>
-              <h3 className="font-semibold text-slate-800 text-sm leading-snug flex-1 mb-2">{product.name}</h3>
-              <div className="font-black text-xl text-slate-900 mb-4">${product.price.toLocaleString()}</div>
-              <button 
-                onClick={() => addToCart(product)}
-                className="w-full bg-orange-50 text-orange-700 hover:bg-orange-500 hover:text-white font-bold py-3 rounded-xl transition-all active:scale-[0.97] text-sm flex items-center justify-center gap-2 group-hover:shadow-sm"
-              >
-                Agregar
-              </button>
-            </div>
+            <Link href="/productos?cat=⭐ Favoritos" className="text-pink-600 font-bold hover:underline text-sm truncate ml-4">Ver Catálogo →</Link>
           </div>
-        ))}
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {featuredProducts.map((p: any) => (
+              <Link href="/productos" key={p.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-pink-200 transition group block">
+                <div className="aspect-square bg-slate-50 rounded-xl mb-4 overflow-hidden flex items-center justify-center">
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
+                  ) : (
+                    <span className="text-4xl group-hover:scale-125 transition drop-shadow-sm">🍭</span>
+                  )}
+                </div>
+                <h3 className="font-semibold text-slate-800 text-sm leading-snug mb-1 truncate">{p.name}</h3>
+                <div className="text-pink-600 font-black">{formatPrice(p.price)}</div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* New Arrivals Section */}
+      {newArrivals.length > 0 && (
+        <section>
+          <div className="flex justify-between items-end mb-6 border-b border-slate-200 pb-4">
+            <div>
+              <h2 className="text-2xl font-black text-slate-800">🆕 Recién Llegados</h2>
+              <p className="text-sm text-slate-500 mt-1">Explora las últimas novedades de nuestro inventario.</p>
+            </div>
+            <Link href="/productos?cat=🆕 Novedades" className="text-pink-600 font-bold hover:underline text-sm truncate ml-4">Ver Todos →</Link>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {newArrivals.map((p: any) => (
+              <Link href="/productos" key={p.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-pink-200 transition group block">
+                <div className="aspect-square bg-slate-50 rounded-xl mb-4 overflow-hidden flex items-center justify-center">
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
+                  ) : (
+                    <span className="text-4xl group-hover:scale-125 transition drop-shadow-sm">🍭</span>
+                  )}
+                </div>
+                <h3 className="font-semibold text-slate-800 text-sm leading-snug mb-1 truncate">{p.name}</h3>
+                <div className="text-pink-600 font-black">{formatPrice(p.price)}</div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Banners */}
+      <div className="grid md:grid-cols-2 gap-6 mt-4">
+        <Link href="/contacto" className="bg-blue-50 hover:bg-pink-100 transition p-8 rounded-3xl border border-pink-200 flex flex-col items-start justify-center group overflow-hidden relative">
+          <div className="relative z-10">
+            <h3 className="text-2xl font-black text-pink-800 mb-2">Visita Nuestro Local</h3>
+            <p className="text-pink-700">Conoce nuestro local en Av. San Martín 1324, Ramos Mejía.</p>
+            <span className="inline-block mt-4 text-sm font-bold border-b-2 border-pink-500 pb-1 text-pink-700">Ver en Mapa →</span>
+          </div>
+          <span className="absolute right-0 bottom-0 text-9xl opacity-10 group-hover:scale-110 group-hover:rotate-12 transition duration-500">📍</span>
+        </Link>
+        <Link href="/promociones" className="bg-blue-50 hover:bg-blue-100 transition p-8 rounded-3xl border border-blue-100 flex flex-col items-start justify-center group overflow-hidden relative">
+          <div className="relative z-10">
+            <h3 className="text-2xl font-black text-blue-800 mb-2">Sección de Ofertas</h3>
+            <p className="text-blue-700">Ahorrá en grande con nuestras promociones limitadas y descuentos por cantidad.</p>
+            <span className="inline-block mt-4 text-sm font-bold border-b-2 border-blue-500 pb-1 text-blue-700">Quiero ver Promo →</span>
+          </div>
+          <span className="absolute right-0 bottom-0 text-9xl opacity-20 group-hover:scale-110 -group-hover:rotate-12 transition duration-500">💰</span>
+        </Link>
       </div>
+
     </main>
-  );
+  )
 }

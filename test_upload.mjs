@@ -12,6 +12,7 @@ try {
 
   const formData = new FormData();
   formData.append('file', new Blob([buffer]), 'dummy.xlsx');
+  formData.append('action', 'preview');
 
   const res = await fetch('http://localhost:3000/api/admin/import', {
     method: 'POST',

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { logout } from "./login/actions";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,7 +18,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/staging" className="block p-3 rounded hover:bg-slate-800 transition-colors">
             📦 Preparación
           </Link>
+          <Link href="/admin/products" className="block p-3 rounded hover:bg-slate-800 transition-colors">
+            📚 Catálogo General
+          </Link>
+          <Link href="/admin/carousel" className="block p-3 rounded hover:bg-slate-800 transition-colors">
+            🖼️ Carrusel Principal
+          </Link>
         </nav>
+        <div className="p-4 mt-auto border-t border-slate-800">
+          <form action={logout}>
+            <button type="submit" className="w-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 px-4 py-2 rounded transition-colors font-medium text-sm flex items-center justify-center gap-2">
+              <span className="text-lg">🚪</span> Cerrar Sesión
+            </button>
+          </form>
+        </div>
       </aside>
       <main className="flex-1 p-8 overflow-y-auto">
         {children}

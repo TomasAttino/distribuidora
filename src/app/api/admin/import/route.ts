@@ -6,6 +6,7 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const action = formData.get('action') as string;
     
     if (!file) {
       return NextResponse.json({ error: 'No se subió ningún archivo' }, { status: 400 });
@@ -18,60 +19,75 @@ export async function POST(request: Request) {
     const firstSheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[firstSheetName];
     
-    // header: 1 devuelve un array de arrays (índices 0, 1, 2...)
     const rows = xlsx.utils.sheet_to_json<any[]>(sheet, { header: 1 });
     
-    let created = 0;
-    let updated = 0;
-    
-    // Saltamos la fila de cabecera asumiendo que es la fila 0
+    const parsedProducts = [];
+
+    // Parse data first
     for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
-        if (!row || row.length < 13) continue; // Al menos debe tener hasta la col 13 (índice 12)
+        if (!row || row.length < 13) continue;
         
-        // Columna 2 = Índice 1 (Código)
         const code = String(row[1] || '').trim();
-        // Columna 3 = Índice 2 (Nombre)
         const name = String(row[2] || '').trim();
-        // Columna 13 = Índice 12 (Precio)
-        const priceRaw = row[12];
+        // L is the 12th column -> index 11
+        const priceRaw = row[11];
         let price = NaN;
         
         if (typeof priceRaw === 'number') {
             price = priceRaw;
         } else if (typeof priceRaw === 'string') {
-            price = parseFloat(priceRaw.replace(',', '.'));
+            price = parseFloat(priceRaw.replace(',', '.').replace(/[^0-9.-]+/g,""));
         }
         
-        if (!code || !name || isNaN(price)) continue;
-        
-        const existing = await prisma.product.findUnique({
-             where: { code }
+        if (code && name && !isNaN(price)) {
+            parsedProducts.push({ code, name, price });
+        }
+    }
+
+    if (action === 'preview') {
+        return NextResponse.json({ success: true, products: parsedProducts });
+    }
+
+    let created = 0;
+    let updated = 0;
+    
+    const codes = parsedProducts.map(p => p.code);
+    const existingProductsList = await prisma.product.findMany({
+        where: { code: { in: codes } },
+        select: { code: true }
+    });
+    const existingSet = new Set(existingProductsList.map(p => p.code));
+
+    const toCreate = parsedProducts.filter(p => !existingSet.has(p.code));
+    const toUpdate = parsedProducts.filter(p => existingSet.has(p.code));
+
+    if (toCreate.length > 0) {
+        await prisma.product.createMany({
+            data: toCreate.map(p => ({
+                code: p.code,
+                name: p.name,
+                price: p.price,
+                isActive: false
+            })),
+            skipDuplicates: true
         });
-        
-        if (existing) {
-             await prisma.product.update({
-                 where: { code },
-                 data: { price }
-             });
-             updated++;
-        } else {
-             // Nuevo producto: Entra como Inactivo (isActive: false) -> Se activará en Staging
-             await prisma.product.create({
-                 data: {
-                     code,
-                     name,
-                     price,
-                     isActive: false, 
-                 }
-             });
-             created++;
-        }
+        created = toCreate.length;
+    }
+
+    // Prisma doesn't have bulk update syntax for differently parameterized rows easily, 
+    // so we iterate the updates. Usually this is fast enough.
+    for (const prod of toUpdate) {
+        await prisma.product.update({
+            where: { code: prod.code },
+            data: { name: prod.name, price: prod.price }
+        });
+        updated++;
     }
 
     return NextResponse.json({ success: true, created, updated });
   } catch (error: any) {
     console.error('Error procesando excel:', error);
-    return NextResponse.json({ error: error.message || String(error), stack: error.stack }, { status: 500 });
+    return NextResponse.json({ error: error.message || String(error) }, { status: 500 });
   }
 }
