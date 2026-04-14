@@ -25,6 +25,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 });
   } catch (error: any) {
+    console.error('SERVER ERROR IN ACTIVATE PATCH:', error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

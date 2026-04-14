@@ -15,6 +15,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/import" className="block p-3 rounded hover:bg-slate-800 transition-colors">
             📄 Importar Excel
           </Link>
+          <Link href="/admin/import-cigarettes" className="block p-3 rounded hover:bg-slate-800 transition-colors">
+            🚬 Cargar Cigarrillos
+          </Link>
           <Link href="/admin/staging" className="block p-3 rounded hover:bg-slate-800 transition-colors">
             📦 Preparación
           </Link>

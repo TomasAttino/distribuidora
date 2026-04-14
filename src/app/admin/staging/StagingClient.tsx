@@ -30,9 +30,13 @@ export default function StagingClient({ initialProducts }: { initialProducts: Pr
       if (res.ok) {
         setProducts([])
         router.refresh()
+      } else {
+        const errData = await res.json()
+        alert('Error al aprobar todos: ' + (errData.error || res.statusText))
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e)
+      alert('Error de red: ' + e.message)
     } finally {
       setIsProcessing(false)
     }
@@ -48,9 +52,13 @@ export default function StagingClient({ initialProducts }: { initialProducts: Pr
       if (res.ok) {
         setProducts(p => p.filter(prod => prod.code !== code))
         router.refresh()
+      } else {
+        const errData = await res.json()
+        alert('Error al activar: ' + (errData.error || res.statusText))
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e)
+      alert('Error de red al activar: ' + e.message)
     } finally {
       setIsProcessing(false)
     }
