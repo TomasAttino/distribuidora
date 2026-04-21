@@ -55,15 +55,23 @@ export async function POST(request: Request) {
     let created = 0;
     let updated = 0;
     
-    const codes = parsedProducts.map(p => p.code);
+    const codes = Array.from(new Set(parsedProducts.map(p => p.code)));
     const existingProductsList = await prisma.product.findMany({
         where: { code: { in: codes } },
         select: { code: true }
     });
     const existingSet = new Set(existingProductsList.map(p => p.code));
 
-    const toCreate = parsedProducts.filter(p => !existingSet.has(p.code));
-    const toUpdate = parsedProducts.filter(p => existingSet.has(p.code));
+    // For products in the Excel, we want to group them by code to avoid processing duplicates
+    const uniqueParsedProducts = Array.from(
+        parsedProducts.reduce((map, prod: { code: string, name: string, price: number }) => {
+            map.set(prod.code, prod);
+            return map;
+        }, new Map<string, { code: string, name: string, price: number }>()).values()
+    );
+
+    const toCreate = uniqueParsedProducts.filter(p => !existingSet.has(p.code));
+    const toUpdate = uniqueParsedProducts.filter(p => existingSet.has(p.code));
 
     if (toCreate.length > 0) {
         await prisma.product.createMany({
@@ -83,14 +91,19 @@ export async function POST(request: Request) {
     for (const prod of toUpdate) {
         await prisma.product.update({
             where: { code: prod.code },
-            data: { name: prod.name, price: prod.price }
+            data: { 
+                name: prod.name, 
+                price: prod.price,
+                isActive: false // We set to false so it appears in staging for review
+            }
         });
         updated++;
     }
 
     return NextResponse.json({ success: true, created, updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error procesando excel:', error);
-    return NextResponse.json({ error: error.message || String(error) }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

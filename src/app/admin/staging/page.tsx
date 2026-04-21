@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma"
 import StagingClient from "./StagingClient"
 
+export const dynamic = 'force-dynamic';
+
 export default async function StagingPage() {
   // Fetch pending products
   const pendingProducts = await prisma.product.findMany({
