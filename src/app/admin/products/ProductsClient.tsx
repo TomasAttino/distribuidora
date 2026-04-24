@@ -1,7 +1,7 @@
 "use client"
-import { useState } from "react"
-import { Edit2, Loader2, Save, X } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { Edit2, Loader2, Save, X, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 
 type Product = {
   id: number
@@ -23,18 +23,53 @@ type Category = {
   name: string
 }
 
-export default function ProductsClient({ initialProducts, categories }: { initialProducts: Product[], categories: Category[] }) {
-  const [products, setProducts] = useState(initialProducts)
-  const [searchTerm, setSearchTerm] = useState("")
+interface ProductsClientProps {
+  initialProducts: Product[]
+  categories: Category[]
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  searchQuery: string
+}
+
+export default function ProductsClient({ 
+  initialProducts, 
+  categories,
+  currentPage,
+  totalPages,
+  totalCount,
+  searchQuery
+}: ProductsClientProps) {
+  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const [searchTerm, setSearchTerm] = useState(searchQuery)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<Partial<Product>>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.code.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Sincronizar estado local con props iniciales cuando cambian (ej. al navegar)
+  useEffect(() => {
+    setProducts(initialProducts)
+  }, [initialProducts])
+
+  const handleSearch = () => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (searchTerm) {
+      params.set('search', searchTerm)
+    } else {
+      params.delete('search')
+    }
+    params.set('page', '1')
+    router.push(`${pathname}?${params.toString()}`)
+  }
+
+  const goToPage = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('page', page.toString())
+    router.push(`${pathname}?${params.toString()}`)
+  }
 
   const startEdit = (prod: Product) => {
     setEditingId(prod.id)
@@ -96,22 +131,29 @@ export default function ProductsClient({ initialProducts, categories }: { initia
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="p-6 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Productos Activos ({products.length})</h2>
+          <h2 className="text-lg font-bold text-slate-800">Productos Activos ({totalCount})</h2>
         </div>
-        <div className="flex-1 max-w-md w-full">
+        <div className="flex-1 max-w-md w-full flex gap-2">
           <input 
             type="text" 
             placeholder="Buscar por nombre o código..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
           />
+          <button 
+            onClick={handleSearch}
+            className="p-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition"
+          >
+            <Search size={18} />
+          </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto max-h-[800px] overflow-y-auto">
+      <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-white sticky top-0 border-b border-slate-200 text-slate-600 font-bold z-10">
+          <thead className="bg-white border-b border-slate-200 text-slate-600 font-bold">
             <tr>
               <th className="p-4">Imagen</th>
               <th className="p-4">Código</th>
@@ -121,12 +163,12 @@ export default function ProductsClient({ initialProducts, categories }: { initia
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.length === 0 ? (
+            {products.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-slate-500">No se encontraron productos probando la búsqueda actual.</td>
+                <td colSpan={5} className="p-8 text-center text-slate-500">No se encontraron productos en esta página.</td>
               </tr>
             ) : (
-             filteredProducts.map((prod) => (
+             products.map((prod) => (
               <tr key={prod.id} className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors ${!prod.inStock && 'opacity-60 bg-slate-50'}`}>
                 <td className="p-4">
                   <div className="w-12 h-12 rounded bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
@@ -159,6 +201,7 @@ export default function ProductsClient({ initialProducts, categories }: { initia
                             <option key={cat.id} value={cat.name}>{cat.name}</option>
                           ))}
                         </select>
+                      </div>
                       <div className="flex gap-2 flex-wrap text-slate-700">
                         <label className="flex items-center gap-2 border p-2 rounded text-sm bg-white cursor-pointer select-none">
                           <input 
@@ -192,7 +235,6 @@ export default function ProductsClient({ initialProducts, categories }: { initia
                           />
                           🆕 Novedad
                         </label>
-                      </div>
                       </div>
                       <input 
                         type="text" 
@@ -275,6 +317,31 @@ export default function ProductsClient({ initialProducts, categories }: { initia
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="text-sm text-slate-500">
+            Página <span className="font-medium text-slate-800">{currentPage}</span> de <span className="font-medium text-slate-800">{totalPages}</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1 || isProcessing}
+              className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages || isProcessing}
+              className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

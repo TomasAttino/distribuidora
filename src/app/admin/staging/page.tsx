@@ -3,11 +3,42 @@ import StagingClient from "./StagingClient"
 
 export const dynamic = 'force-dynamic';
 
-export default async function StagingPage() {
-  // Fetch pending products
+export default async function StagingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; search?: string }>;
+}) {
+  const resolvedParams = await searchParams;
+  const page = parseInt(resolvedParams.page || '1');
+  const search = resolvedParams.search || '';
+  const pageSize = 20;
+
+  const where = {
+    isActive: false,
+    OR: search ? [
+      { name: { contains: search, mode: 'insensitive' as const } },
+      { code: { contains: search, mode: 'insensitive' as const } },
+    ] : undefined,
+  };
+
+  // Fetch total count for pagination
+  const totalCount = await prisma.product.count({ where });
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  // Fetch pending products optimized with select
   const pendingProducts = await prisma.product.findMany({
-    where: { isActive: false },
-    orderBy: { createdAt: 'desc' }
+    where,
+    take: pageSize,
+    skip: (page - 1) * pageSize,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      price: true,
+      category: true,
+      brand: true,
+    }
   })
 
   return (
@@ -18,7 +49,13 @@ export default async function StagingPage() {
         Revisalos antes de darlos de alta definitivamente para que aparezcan en la tienda.
       </p>
 
-      <StagingClient initialProducts={pendingProducts} />
+      <StagingClient 
+        initialProducts={pendingProducts} 
+        currentPage={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        searchQuery={search}
+      />
     </div>
   )
 }

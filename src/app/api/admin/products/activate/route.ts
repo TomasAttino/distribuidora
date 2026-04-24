@@ -6,9 +6,11 @@ export async function PATCH(request: Request) {
     const data = await request.json();
 
     if (data.activateAll) {
-      // Activate all pending products
+      // Activate either specific codes or all pending
+      const where = data.codes ? { code: { in: data.codes } } : { isActive: false };
+      
       const updated = await prisma.product.updateMany({
-        where: { isActive: false },
+        where,
         data: { isActive: true }
       });
       return NextResponse.json({ success: true, count: updated.count });

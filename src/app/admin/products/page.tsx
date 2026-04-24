@@ -3,10 +3,48 @@ import ProductsClient from "./ProductsClient"
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminProductsPage() {
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; search?: string }>;
+}) {
+  const resolvedParams = await searchParams;
+  const page = parseInt(resolvedParams.page || '1');
+  const search = resolvedParams.search || '';
+  const pageSize = 20;
+
+  const where = {
+    isActive: true,
+    OR: search ? [
+      { name: { contains: search, mode: 'insensitive' as const } },
+      { code: { contains: search, mode: 'insensitive' as const } },
+    ] : undefined,
+  };
+
+  // Fetch total count for pagination
+  const totalCount = await prisma.product.count({ where });
+  const totalPages = Math.ceil(totalCount / pageSize);
+
   const activeProducts = await prisma.product.findMany({
-    where: { isActive: true },
-    orderBy: { createdAt: 'desc' }
+    where,
+    take: pageSize,
+    skip: (page - 1) * pageSize,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      price: true,
+      category: true,
+      brand: true,
+      imageUrl: true,
+      isPromo: true,
+      oldPrice: true,
+      isFeatured: true,
+      isNewArrival: true,
+      isCigarette: true,
+      inStock: true
+    }
   })
 
   const categories = await prisma.category.findMany({
@@ -21,7 +59,14 @@ export default async function AdminProductsPage() {
         Puedes cambiar sus nombres, precios e imágenes (por URL).
       </p>
 
-      <ProductsClient initialProducts={activeProducts} categories={categories} />
+      <ProductsClient 
+        initialProducts={activeProducts} 
+        categories={categories}
+        currentPage={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        searchQuery={search}
+      />
     </div>
   )
 }

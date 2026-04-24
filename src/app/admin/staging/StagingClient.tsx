@@ -1,7 +1,7 @@
 "use client"
-import { useState } from "react"
-import { Check, Trash2, CheckCircle2, Loader2, PackageX } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { ChevronLeft, ChevronRight, Check, Trash2, CheckCircle2, Loader2, Search } from "lucide-react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 
 type Product = {
   id: number
@@ -12,27 +12,69 @@ type Product = {
   brand: string | null
 }
 
-export default function StagingClient({ initialProducts }: { initialProducts: Product[] }) {
-  const [products, setProducts] = useState(initialProducts)
-  const [searchTerm, setSearchTerm] = useState("")
+interface StagingClientProps {
+  initialProducts: Product[]
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  searchQuery: string
+}
+
+export default function StagingClient({ 
+  initialProducts, 
+  currentPage, 
+  totalPages, 
+  totalCount,
+  searchQuery 
+}: StagingClientProps) {
+  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const [searchTerm, setSearchTerm] = useState(searchQuery)
   const [isProcessing, setIsProcessing] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // Sincronizar estado local con props iniciales cuando cambian (ej. al navegar)
+  useEffect(() => {
+    setProducts(initialProducts)
+  }, [initialProducts])
+
+  const handleSearch = () => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (searchTerm) {
+      params.set('search', searchTerm)
+    } else {
+      params.delete('search')
+    }
+    params.set('page', '1')
+    router.push(`${pathname}?${params.toString()}`)
+  }
+
+  const goToPage = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('page', page.toString())
+    router.push(`${pathname}?${params.toString()}`)
+  }
 
   const handleActivateAll = async () => {
-    if (!confirm(`¿Estás seguro de dar de alta los ${products.length} productos pendientes?`)) return
+    if (!confirm(`¿Estás seguro de dar de alta los ${products.length} productos de esta página?`)) return
     
     setIsProcessing(true)
     try {
+      // Pasamos los códigos de la página actual para que el backend sepa qué activar
       const res = await fetch("/api/admin/products/activate", {
         method: "PATCH",
-        body: JSON.stringify({ activateAll: true })
+        body: JSON.stringify({ 
+            activateAll: true,
+            codes: products.map(p => p.code)
+        })
       })
       if (res.ok) {
         setProducts([])
         router.refresh()
       } else {
         const errData = await res.json()
-        alert('Error al aprobar todos: ' + (errData.error || res.statusText))
+        alert('Error al aprobar: ' + (errData.error || res.statusText))
       }
     } catch (e: any) {
       console.error(e)
@@ -86,12 +128,7 @@ export default function StagingClient({ initialProducts }: { initialProducts: Pr
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  if (products.length === 0) {
+  if (initialProducts.length === 0 && !searchQuery) {
     return (
       <div className="bg-white p-12 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center">
         <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-4">
@@ -107,30 +144,37 @@ export default function StagingClient({ initialProducts }: { initialProducts: Pr
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="p-6 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Pendientes de Alta ({products.length})</h2>
+          <h2 className="text-lg font-bold text-slate-800">Pendientes de Alta ({totalCount})</h2>
         </div>
-        <div className="flex-1 max-w-md w-full">
+        <div className="flex-1 max-w-md w-full flex gap-2">
           <input 
             type="text" 
             placeholder="Buscar por nombre o código..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
           />
+          <button 
+            onClick={handleSearch}
+            className="p-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition"
+          >
+            <Search size={18} />
+          </button>
         </div>
         <button 
           onClick={handleActivateAll}
-          disabled={isProcessing}
+          disabled={isProcessing || products.length === 0}
           className="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700 transition active:scale-95 flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
         >
           {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
-          Aprobar todos
+          Aprobar página
         </button>
       </div>
 
-      <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+      <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-white sticky top-0 border-b border-slate-200 text-slate-600 font-bold z-10">
+          <thead className="bg-white border-b border-slate-200 text-slate-600 font-bold">
             <tr>
               <th className="p-4">Código</th>
               <th className="p-4">Nombre</th>
@@ -139,12 +183,12 @@ export default function StagingClient({ initialProducts }: { initialProducts: Pr
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.length === 0 ? (
+            {products.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-slate-500">No se encontraron productos coincidentes.</td>
+                <td colSpan={4} className="p-8 text-center text-slate-500">No se encontraron productos coincidentes en esta página.</td>
               </tr>
             ) : (
-              filteredProducts.map((prod) => (
+              products.map((prod) => (
                 <tr key={prod.code} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
                   <td className="p-4 font-mono text-xs text-slate-500 whitespace-nowrap">{prod.code}</td>
                   <td className="p-4 font-medium text-slate-800">{prod.name}</td>
@@ -175,6 +219,31 @@ export default function StagingClient({ initialProducts }: { initialProducts: Pr
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="text-sm text-slate-500">
+            Página <span className="font-medium text-slate-800">{currentPage}</span> de <span className="font-medium text-slate-800">{totalPages}</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1 || isProcessing}
+              className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages || isProcessing}
+              className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

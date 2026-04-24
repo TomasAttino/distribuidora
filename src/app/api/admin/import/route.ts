@@ -79,22 +79,20 @@ export async function POST(request: Request) {
                 code: p.code,
                 name: p.name,
                 price: p.price,
-                isActive: false
+                isActive: false // Solo nuevos van a false (staging)
             })),
             skipDuplicates: true
         });
         created = toCreate.length;
     }
 
-    // Prisma doesn't have bulk update syntax for differently parameterized rows easily, 
-    // so we iterate the updates. Usually this is fast enough.
+    // Refactor Atómico: Solo actualizar precio si el producto ya existe
+    // PROHIBIDO sobreescribir image, category o isActive si ya existen
     for (const prod of toUpdate) {
         await prisma.product.update({
             where: { code: prod.code },
             data: { 
-                name: prod.name, 
-                price: prod.price,
-                isActive: false // We set to false so it appears in staging for review
+                price: prod.price
             }
         });
         updated++;
