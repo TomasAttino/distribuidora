@@ -77,7 +77,8 @@ export async function POST(request: Request) {
                     name: prod.name,
                     price: prod.price,
                     category: "Otros",
-                    isActive: false // Oculto hasta que le pongas foto
+                    isActive: false, // Oculto hasta que le pongas foto
+                    isNewArrival: true
                 }
             });
             created++;

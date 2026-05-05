@@ -113,7 +113,8 @@ export async function POST(request: Request) {
                     name: prod.name,
                     price: prod.price,
                     isActive: true, // Assume cigarettes are active upon creation? The user said "cree el cigarrillo... a 6000 pesos", normally it might be active immediately. We'll set true.
-                    isCigarette: true
+                    isCigarette: true,
+                    isNewArrival: true
                 }
             });
             created++;

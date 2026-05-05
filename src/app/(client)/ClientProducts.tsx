@@ -10,6 +10,7 @@ export default function ClientProducts({ products }: { products: Product[] }) {
   const searchParams = useSearchParams()
   const [searchTerm, setSearchTerm] = useState("")
   const [activeCategory, setActiveCategory] = useState(searchParams.get("cat") || "Todos")
+  const [sortOrder, setSortOrder] = useState<"name-asc" | "price-asc" | "price-desc">("name-asc")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
 
@@ -19,7 +20,7 @@ export default function ClientProducts({ products }: { products: Product[] }) {
   }, [products])
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    let filtered = products.filter(p => {
       const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             (p.brand && p.brand.toLowerCase().includes(searchTerm.toLowerCase()));
       
@@ -32,11 +33,19 @@ export default function ClientProducts({ products }: { products: Product[] }) {
 
       return matchesSearch && matchesCategory;
     });
-  }, [products, searchTerm, activeCategory]);
+
+    // Ordenamiento
+    return filtered.sort((a, b) => {
+      if (sortOrder === "price-asc") return a.price - b.price;
+      if (sortOrder === "price-desc") return b.price - a.price;
+      // Default: Alfabético (name-asc)
+      return a.name.localeCompare(b.name);
+    });
+  }, [products, searchTerm, activeCategory, sortOrder]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, activeCategory]);
+  }, [searchTerm, activeCategory, sortOrder]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const currentProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -47,15 +56,29 @@ export default function ClientProducts({ products }: { products: Product[] }) {
 
   return (
     <main className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto flex flex-col gap-6">
-      <div className="relative">
-         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-         <input 
-            type="text" 
-            placeholder="Buscar golosinas, bebidas..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 rounded-full border border-slate-200 shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none text-slate-800 transition-all font-medium"
-         />
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+           <input 
+              type="text" 
+              placeholder="Buscar golosinas, bebidas..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-4 rounded-full border border-slate-200 shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none text-slate-800 transition-all font-medium"
+           />
+        </div>
+        <div className="flex items-center gap-2 px-2">
+          <span className="text-sm font-bold text-slate-500 whitespace-nowrap">Ordenar por:</span>
+          <select 
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as any)}
+            className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-pink-500 shadow-sm"
+          >
+            <option value="name-asc">Nombre (A-Z)</option>
+            <option value="price-asc">Precio: Menor a Mayor</option>
+            <option value="price-desc">Precio: Mayor a Menor</option>
+          </select>
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x">
