@@ -79,7 +79,8 @@ export async function POST(request: Request) {
                 code: p.code,
                 name: p.name,
                 price: p.price,
-                isActive: false // Solo nuevos van a false (staging)
+                isActive: false,
+                category: "Otros" // Solo nuevos van a false (staging)
             })),
             skipDuplicates: true
         });
