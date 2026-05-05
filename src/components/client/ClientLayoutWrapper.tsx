@@ -11,10 +11,25 @@ function HeaderWithCart() {
 
   const handleCheckout = () => {
     let text = "Hola, soy [Tu Nombre / Kiosco], mi pedido es:\n\n"
+    
+    // Agrupamos los productos por categoría
+    const groupedItems: { [key: string]: typeof items } = {}
     items.forEach(item => {
-      text += `- ${item.quantity}x ${item.name} ($${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(item.price * item.quantity)})\n`
+      const cat = item.category || "Otros"
+      if (!groupedItems[cat]) groupedItems[cat] = []
+      groupedItems[cat].push(item)
     })
-    text += `\n*Total Estimado: $${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(total)}*`
+
+    // Construimos el mensaje agrupado
+    Object.keys(groupedItems).forEach(cat => {
+      text += `*${cat}:*\n`
+      groupedItems[cat].forEach(item => {
+        text += `${item.quantity} ${item.name}\n`
+      })
+      text += `\n`
+    })
+
+    text += `*Total Estimado: $${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(total)}*`
 
     if (notes.trim() !== "") {
       text += `\n\n*Aclaraciones:*\n${notes}`

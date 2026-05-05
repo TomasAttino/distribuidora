@@ -1,7 +1,7 @@
 "use client"
 import React, { createContext, useContext, useState } from 'react';
 
-type Product = { id: number; name: string; price: number; imageUrl?: string };
+type Product = { id: number; name: string; price: number; imageUrl?: string; category?: string | null };
 type CartItem = Product & { quantity: number };
 
 type CartContextType = {
