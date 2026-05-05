@@ -14,24 +14,22 @@ export async function POST(request: Request) {
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
     const workbook = xlsx.read(buffer, { type: 'buffer' });
     const firstSheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[firstSheetName];
-    
     const rows = xlsx.utils.sheet_to_json<any[]>(sheet, { header: 1 });
     
     const parsedProducts = [];
 
-    // Parse data first
+    // 1. LEER Y LIMPIAR DATOS
     for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
-        if (!row || row.length < 13) continue;
+        if (!row || row.length < 12) continue; 
         
-        const code = String(row[1] || '').trim();
+        // El .trim() es por si el Excel trae espacios invisibles
+        const code = String(row[1] || '').trim(); 
         const name = String(row[2] || '').trim();
-        // L is the 12th column -> index 11
-        const priceRaw = row[11];
+        const priceRaw = row[11]; // Columna L
         let price = NaN;
         
         if (typeof priceRaw === 'number') {
@@ -54,52 +52,40 @@ export async function POST(request: Request) {
 
     let created = 0;
     let updated = 0;
-    
-    const codes = Array.from(new Set(parsedProducts.map(p => p.code)));
-    const existingProductsList = await prisma.product.findMany({
-        where: { code: { in: codes } },
-        select: { code: true }
-    });
-    const existingSet = new Set(existingProductsList.map(p => p.code));
 
-    // For products in the Excel, we want to group them by code to avoid processing duplicates
-    const uniqueParsedProducts = Array.from(
-        parsedProducts.reduce((map, prod: { code: string, name: string, price: number }) => {
-            map.set(prod.code, prod);
-            return map;
-        }, new Map<string, { code: string, name: string, price: number }>()).values()
-    );
-
-    const toCreate = uniqueParsedProducts.filter(p => !existingSet.has(p.code));
-    const toUpdate = uniqueParsedProducts.filter(p => existingSet.has(p.code));
-
-    if (toCreate.length > 0) {
-        await prisma.product.createMany({
-            data: toCreate.map(p => ({
-                code: p.code,
-                name: p.name,
-                price: p.price,
-                isActive: false,
-                category: "Otros" // Solo nuevos van a false (staging)
-            })),
-            skipDuplicates: true
-        });
-        created = toCreate.length;
-    }
-
-    // Refactor Atómico: Solo actualizar precio si el producto ya existe
-    // PROHIBIDO sobreescribir image, category o isActive si ya existen
-    for (const prod of toUpdate) {
-        await prisma.product.update({
+    // 2. PROCESO QUIRÚRGICO: UNO POR UNO
+    for (const prod of parsedProducts) {
+        // Buscamos si existe en la base que tiene las fotos
+        const existingProduct = await prisma.product.findUnique({
             where: { code: prod.code },
-            data: { 
-                price: prod.price
-            }
+            select: { id: true, price: true }
         });
-        updated++;
+
+        if (existingProduct) {
+            // SI EXISTE: Solo actualizamos el precio. 
+            // Prisma NO toca imageUrl ni category porque no se las pasamos.
+            await prisma.product.update({
+                where: { code: prod.code },
+                data: { price: prod.price }
+            });
+            updated++;
+        } else {
+            // SI NO EXISTE: Va a fase de preparación
+            await prisma.product.create({
+                data: {
+                    code: prod.code,
+                    name: prod.name,
+                    price: prod.price,
+                    category: "Otros",
+                    isActive: false // Oculto hasta que le pongas foto
+                }
+            });
+            created++;
+        }
     }
 
     return NextResponse.json({ success: true, created, updated });
+
   } catch (error: unknown) {
     console.error('Error procesando excel:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
