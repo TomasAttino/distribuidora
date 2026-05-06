@@ -3,6 +3,7 @@
 import { useCart, CartProvider } from "@/context/CartContext"
 import { useState } from "react"
 import { ShoppingCart, X, Plus, Minus } from "lucide-react"
+import Link from "next/link"
 
 function HeaderWithCart() {
   const { total, items, updateQuantity, removeFromCart, clearCart } = useCart()
@@ -55,10 +56,10 @@ function HeaderWithCart() {
 
         {/* Navigation Tabs */}
         <nav className="flex gap-4 md:gap-6 text-sm font-bold text-slate-600 w-full md:w-auto justify-center overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-          <a href="/" className="hover:text-pink-600 transition whitespace-nowrap">INICIO</a>
-          <a href="/productos" className="hover:text-pink-600 transition whitespace-nowrap">PRODUCTOS</a>
-          <a href="/promociones" className="hover:text-pink-600 transition whitespace-nowrap">PROMOCIONES</a>
-          <a href="/contacto" className="hover:text-pink-600 transition whitespace-nowrap">CONTACTO</a>
+          <Link href="/" className="hover:text-pink-600 transition whitespace-nowrap">INICIO</Link>
+          <Link href="/productos" className="hover:text-pink-600 transition whitespace-nowrap">PRODUCTOS</Link>
+          <Link href="/promociones" className="hover:text-pink-600 transition whitespace-nowrap">PROMOCIONES</Link>
+          <Link href="/contacto" className="hover:text-pink-600 transition whitespace-nowrap">CONTACTO</Link>
         </nav>
 
         <button onClick={() => setIsOpen(true)} className="w-full md:w-auto justify-center bg-pink-100 text-pink-700 px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-pink-200 transition">

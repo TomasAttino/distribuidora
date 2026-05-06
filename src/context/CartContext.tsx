@@ -1,5 +1,5 @@
 "use client"
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Product = { id: number; name: string; price: number; imageUrl?: string; category?: string | null };
 type CartItem = Product & { quantity: number };
@@ -17,6 +17,27 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Cargar desde localStorage al inicio
+  useEffect(() => {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      try {
+        setItems(JSON.parse(savedCart));
+      } catch (e) {
+        console.error('Error loading cart from localStorage', e);
+      }
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Guardar en localStorage cuando cambien los items
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('cart', JSON.stringify(items));
+    }
+  }, [items, isInitialized]);
 
   const addToCart = (product: Product) => {
     setItems(current => {
