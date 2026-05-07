@@ -45,7 +45,12 @@ export default function ClientProducts({ products }: { products: Product[] }) {
 
   useEffect(() => {
     setCurrentPage(1);
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, [searchTerm, activeCategory, sortOrder]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [currentPage]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const currentProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);

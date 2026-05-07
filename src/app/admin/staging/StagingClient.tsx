@@ -54,6 +54,7 @@ export default function StagingClient({
     const params = new URLSearchParams(searchParams.toString())
     params.set('page', page.toString())
     router.push(`${pathname}?${params.toString()}`)
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleActivateAll = async () => {

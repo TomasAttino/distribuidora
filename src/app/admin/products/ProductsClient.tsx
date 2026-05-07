@@ -69,6 +69,7 @@ export default function ProductsClient({
     const params = new URLSearchParams(searchParams.toString())
     params.set('page', page.toString())
     router.push(`${pathname}?${params.toString()}`)
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const startEdit = (prod: Product) => {

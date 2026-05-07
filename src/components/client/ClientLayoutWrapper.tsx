@@ -1,9 +1,10 @@
 "use client"
 
 import { useCart, CartProvider } from "@/context/CartContext"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ShoppingCart, X, Plus, Minus } from "lucide-react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 function HeaderWithCart() {
   const { total, items, updateQuantity, removeFromCart, clearCart } = useCart()
@@ -144,6 +145,12 @@ function HeaderWithCart() {
 }
 
 export function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+
   return (
     <CartProvider>
       <div className="min-h-screen flex flex-col bg-slate-50">
