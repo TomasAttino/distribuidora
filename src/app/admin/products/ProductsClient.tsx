@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Edit2, Loader2, Save, X, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { Edit2, Loader2, Save, X, Search, ChevronLeft, ChevronRight, Plus } from "lucide-react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 
 type Product = {
@@ -45,6 +45,17 @@ export default function ProductsClient({
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<Partial<Product>>({})
   const [isProcessing, setIsProcessing] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [newProduct, setNewProduct] = useState<Partial<Product>>({
+    code: "",
+    name: "",
+    price: 0,
+    category: "",
+    brand: "",
+    imageUrl: "",
+    isPromo: false,
+    inStock: true,
+  })
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -105,6 +116,42 @@ export default function ProductsClient({
     }
   }
 
+  const handleCreate = async () => {
+    if (!newProduct.code || !newProduct.name || !newProduct.price) {
+      alert("Código, Nombre y Precio son obligatorios")
+      return
+    }
+    setIsProcessing(true)
+    try {
+      const res = await fetch("/api/admin/products/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newProduct)
+      })
+      if (res.ok) {
+        setShowCreateForm(false)
+        setNewProduct({
+          code: "",
+          name: "",
+          price: 0,
+          category: "",
+          brand: "",
+          imageUrl: "",
+          isPromo: false,
+          inStock: true,
+        })
+        router.refresh()
+      } else {
+        const data = await res.json()
+        alert(data.error || "Error al crear producto.")
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   const handleDelete = async (code: string) => {
     if (!confirm("¿Seguro que deseas eliminar este producto activo?")) return
     setIsProcessing(true)
@@ -129,7 +176,72 @@ export default function ProductsClient({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="flex flex-col gap-6">
+      {/* Botón y Formulario de Creación */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-bold text-slate-800">Gestión de Catálogo</h2>
+          <button 
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="flex items-center gap-2 bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition font-bold text-sm shadow-sm"
+          >
+            {showCreateForm ? <X size={18} /> : <Plus size={18} />}
+            {showCreateForm ? "Cancelar" : "Cargar Producto a Mano"}
+          </button>
+        </div>
+
+        {showCreateForm && (
+          <div className="mt-6 p-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-slate-50/50 rounded-xl">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Código (EAN/Interno)</label>
+              <input type="text" placeholder="Ej: 779..." className="p-2 border rounded-lg text-sm" value={newProduct.code} onChange={e => setNewProduct({...newProduct, code: e.target.value})} />
+            </div>
+            <div className="flex flex-col gap-1 lg:col-span-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Nombre del Producto</label>
+              <input type="text" placeholder="Ej: Alfajor Jorgito Chocolate" className="p-2 border rounded-lg text-sm" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Precio</label>
+              <input type="number" className="p-2 border rounded-lg text-sm" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
+              <select className="p-2 border rounded-lg text-sm bg-white" value={newProduct.category || ""} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.name}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Marca (Opcional)</label>
+              <input type="text" className="p-2 border rounded-lg text-sm" value={newProduct.brand || ""} onChange={e => setNewProduct({...newProduct, brand: e.target.value})} />
+            </div>
+            <div className="flex flex-col gap-1 lg:col-span-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">URL de Imagen</label>
+              <input type="text" placeholder="https://..." className="p-2 border rounded-lg text-sm" value={newProduct.imageUrl || ""} onChange={e => setNewProduct({...newProduct, imageUrl: e.target.value})} />
+            </div>
+            <div className="flex gap-4 items-center pt-6">
+              <label className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer">
+                <input type="checkbox" checked={newProduct.isPromo} onChange={e => setNewProduct({...newProduct, isPromo: e.target.checked})} /> Oferta
+              </label>
+              <label className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer">
+                <input type="checkbox" checked={newProduct.inStock} onChange={e => setNewProduct({...newProduct, inStock: e.target.checked})} /> En Stock
+              </label>
+              <button 
+                onClick={handleCreate} 
+                disabled={isProcessing}
+                className="ml-auto bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition font-bold shadow-md flex items-center gap-2"
+              >
+                {isProcessing ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                Crear Producto
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="p-6 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-800">Productos Activos ({totalCount})</h2>
@@ -344,5 +456,7 @@ export default function ProductsClient({
         </div>
       )}
     </div>
+  )
+}
   )
 }

@@ -37,10 +37,11 @@ export default function HomeCarousel({ slides }: { slides: Slide[] }) {
   return (
     <div className="relative w-full max-w-6xl mx-auto h-[200px] sm:h-[300px] md:h-[400px] lg:h-[500px] bg-slate-50 rounded-3xl overflow-hidden shadow-2xl mb-12">
       {slides.map((slide, index) => {
+        const isActive = index === currentIndex;
+        
         const SlideContent = () => (
           <div
-            key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-1000 flex ${index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
+            className={`absolute inset-0 transition-opacity duration-1000 ${isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
           >
             {slide.imageUrl && (
               <Image 
@@ -55,11 +56,13 @@ export default function HomeCarousel({ slides }: { slides: Slide[] }) {
         );
 
         return slide.linkUrl ? (
-          <a href={slide.linkUrl} key={slide.id} className="block w-full h-full">
+          <a href={slide.linkUrl} key={slide.id} className={`block w-full h-full ${isActive ? 'relative z-10' : 'absolute inset-0 z-0'}`}>
             <SlideContent />
           </a>
         ) : (
-          <SlideContent key={slide.id} />
+          <div key={slide.id} className={`w-full h-full ${isActive ? 'relative z-10' : 'absolute inset-0 z-0'}`}>
+             <SlideContent />
+          </div>
         );
       })}
 
