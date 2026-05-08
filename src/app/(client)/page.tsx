@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma'
 import Link from 'next/link'
 import HomeCarousel from './HomeCarousel'
+import { Suspense } from 'react'
 
 export const revalidate = 10800;
 
@@ -57,7 +58,11 @@ export default async function HomePage() {
   return (
     <main className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto flex flex-col gap-10 cursor-default">
       {/* Promos Carousel */}
-      {slides.length > 0 && <HomeCarousel slides={slides as any} />}
+      {slides.length > 0 && (
+        <Suspense fallback={<div className="w-full h-[300px] bg-slate-100 animate-pulse rounded-3xl" />}>
+          <HomeCarousel slides={slides as any} />
+        </Suspense>
+      )}
 
       {/* Intro Banner */}
       {slides.length === 0 && (

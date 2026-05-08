@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma'
 import ClientProducts from '../ClientProducts'
+import { Suspense } from 'react'
 
 export const revalidate = 10800;
 
@@ -28,7 +29,9 @@ export default async function PromosRoute() {
         <h1 className="text-3xl font-extrabold text-orange-600">💸 Ofertas Especiales</h1>
         <p className="text-slate-500 mt-2">No dejes pasar estas promociones limitadas.</p>
       </div>
-      <ClientProducts products={products} />
+      <Suspense fallback={<div className="text-center p-12 text-slate-500 font-bold">Cargando ofertas...</div>}>
+        <ClientProducts products={products} />
+      </Suspense>
     </div>
   )
 }
