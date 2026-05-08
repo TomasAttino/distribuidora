@@ -7,7 +7,10 @@ const prismaClientSingleton = () => {
     connectionString: process.env.DATABASE_URL,
     max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000, // Aumentado para el build
+    ssl: {
+      rejectUnauthorized: false // Para Neon
+    }
   })
   const adapter = new PrismaPg(pool)
   return new PrismaClient({ adapter })
