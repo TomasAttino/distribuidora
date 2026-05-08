@@ -2,22 +2,50 @@ import prisma from '@/lib/prisma'
 import Link from 'next/link'
 import HomeCarousel from './HomeCarousel'
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 10800;
 
 export default async function HomePage() {
   const slides = await prisma.carouselSlide.findMany({
     where: { isActive: true },
+    select: {
+      id: true,
+      title: true,
+      imageUrl: true,
+      linkUrl: true,
+    },
     orderBy: { order: 'asc' }
   });
 
   const featuredProducts = await prisma.product.findMany({
     where: { isActive: true, isFeatured: true },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      imageUrl: true,
+      brand: true,
+      category: true,
+      inStock: true,
+      isPromo: true,
+      oldPrice: true,
+    },
     take: 8,
     orderBy: { createdAt: 'desc' }
   });
 
   const newArrivals = await prisma.product.findMany({
     where: { isActive: true, isNewArrival: true },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      imageUrl: true,
+      brand: true,
+      category: true,
+      inStock: true,
+      isPromo: true,
+      oldPrice: true,
+    },
     take: 8,
     orderBy: { createdAt: 'desc' }
   });
@@ -29,7 +57,7 @@ export default async function HomePage() {
   return (
     <main className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto flex flex-col gap-10 cursor-default">
       {/* Promos Carousel */}
-      {slides.length > 0 && <HomeCarousel slides={slides} />}
+      {slides.length > 0 && <HomeCarousel slides={slides as any} />}
 
       {/* Intro Banner */}
       {slides.length === 0 && (
@@ -54,11 +82,11 @@ export default async function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {featuredProducts.map((p: any) => (
+            {featuredProducts.map((p) => (
               <Link href="/productos" key={p.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-pink-200 transition group block">
                 <div className="aspect-square bg-slate-50 rounded-xl mb-4 overflow-hidden flex items-center justify-center">
                   {p.imageUrl ? (
-                    <img src={p.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
+                    <img src={p.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt={p.name} />
                   ) : (
                     <span className="text-4xl group-hover:scale-125 transition drop-shadow-sm">🍭</span>
                   )}
@@ -83,11 +111,11 @@ export default async function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {newArrivals.map((p: any) => (
+            {newArrivals.map((p) => (
               <Link href="/productos" key={p.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-pink-200 transition group block">
                 <div className="aspect-square bg-slate-50 rounded-xl mb-4 overflow-hidden flex items-center justify-center">
                   {p.imageUrl ? (
-                    <img src={p.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
+                    <img src={p.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt={p.name} />
                   ) : (
                     <span className="text-4xl group-hover:scale-125 transition drop-shadow-sm">🍭</span>
                   )}

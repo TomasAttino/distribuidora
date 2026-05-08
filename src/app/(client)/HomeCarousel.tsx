@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import Image from "next/image"
 
 type Slide = {
   id: number;
   title: string | null;
   imageUrl: string;
   linkUrl: string | null;
-  isActive: boolean;
-  order: number;
+  isActive?: boolean;
+  order?: number;
 }
 
 export default function HomeCarousel({ slides }: { slides: Slide[] }) {
@@ -42,7 +43,13 @@ export default function HomeCarousel({ slides }: { slides: Slide[] }) {
             className={`absolute inset-0 transition-opacity duration-1000 flex ${index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
           >
             {slide.imageUrl && (
-              <img src={slide.imageUrl} alt={slide.title || 'Promo'} className="absolute inset-0 w-full h-full object-cover sm:object-contain" />
+              <Image 
+                src={slide.imageUrl} 
+                alt={slide.title || 'Promo'} 
+                fill
+                priority={index === 0}
+                className="object-cover sm:object-contain" 
+              />
             )}
           </div>
         );

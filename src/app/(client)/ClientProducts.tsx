@@ -3,9 +3,9 @@ import { useCart } from "@/context/CartContext"
 import { useState, useMemo, useEffect } from "react"
 import { Minus, Plus, Trash2, Search } from "lucide-react"
 import { useSearchParams } from "next/navigation"
-import type { Product } from "@prisma/client"
+import Image from "next/image"
 
-export default function ClientProducts({ products }: { products: Product[] }) {
+export default function ClientProducts({ products }: { products: any[] }) {
   const { items, addToCart, updateQuantity, removeFromCart } = useCart()
   const searchParams = useSearchParams()
   const [searchTerm, setSearchTerm] = useState("")
@@ -109,7 +109,13 @@ export default function ClientProducts({ products }: { products: Product[] }) {
             <div key={product.id} className={`bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden flex flex-col hover:shadow-md transition-all group ${!product.inStock ? 'opacity-70' : 'hover:border-pink-200'}`}>
               <div className="aspect-[4/3] bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center relative overflow-hidden">
                  {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className={`w-full h-full object-cover transition-transform duration-300 ${product.inStock ? 'group-hover:scale-105' : 'grayscale'}`} />
+                    <Image 
+                      src={product.imageUrl} 
+                      alt={product.name} 
+                      fill
+                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      className={`object-cover transition-transform duration-300 ${product.inStock ? 'group-hover:scale-105' : 'grayscale'}`} 
+                    />
                  ) : (
                     <span className="text-4xl filter drop-shadow-sm transition-transform duration-300">
                       {product.category === 'Bebidas' ? '🥤' : product.category === 'Snacks' ? '🥔' : product.category === 'Cigarrillos' ? '🚬' : '🍫'}

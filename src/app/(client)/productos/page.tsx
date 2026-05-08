@@ -2,11 +2,24 @@ import prisma from '@/lib/prisma'
 import ClientProducts from '../ClientProducts'
 import { Suspense } from 'react'
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 10800;
 
 export default async function ProductsRoute() {
   const products = await prisma.product.findMany({
     where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      imageUrl: true,
+      brand: true,
+      category: true,
+      inStock: true,
+      isPromo: true,
+      oldPrice: true,
+      isFeatured: true,
+      isNewArrival: true,
+    },
     orderBy: { name: 'asc' }
   });
 
