@@ -1,59 +1,80 @@
 "use client"
 import { useCart } from "@/context/CartContext"
-import { useState, useMemo, useEffect } from "react"
-import { Minus, Plus, Trash2, Search } from "lucide-react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect, useCallback } from "react"
+import { Minus, Plus, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import Image from "next/image"
 
-export default function ClientProducts({ products }: { products: any[] }) {
-  const { items, addToCart, updateQuantity, removeFromCart } = useCart()
+interface ClientProductsProps {
+  products: any[]
+  categories: string[]
+  totalCount: number
+  currentPage: number
+  itemsPerPage: number
+  initialCategory: string
+  initialSearch: string
+  initialSort: string
+}
+
+export default function ClientProducts({ 
+  products, 
+  categories,
+  totalCount, 
+  currentPage, 
+  itemsPerPage,
+  initialCategory,
+  initialSearch,
+  initialSort
+}: ClientProductsProps) {
+  const { items, addToCart, updateQuantity } = useCart()
+  const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeCategory, setActiveCategory] = useState(searchParams.get("cat") || "Todos")
-  const [sortOrder, setSortOrder] = useState<"name-asc" | "price-asc" | "price-desc">("name-asc")
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 20
 
-  const categories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category).filter(Boolean))
-    return ["Todos", "⭐ Favoritos", "🆕 Novedades", "🔥 Promos", ...Array.from(cats)] as string[]
-  }, [products])
+  const [searchTerm, setSearchTerm] = useState(initialSearch)
 
-  const filteredProducts = useMemo(() => {
-    let filtered = products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            (p.brand && p.brand.toLowerCase().includes(searchTerm.toLowerCase()));
+  const createQueryString = useCallback(
+    (params: Record<string, string | number | null>) => {
+      const newSearchParams = new URLSearchParams(searchParams.toString())
       
-      let matchesCategory = false;
-      if (activeCategory === "Todos") matchesCategory = true;
-      else if (activeCategory === "⭐ Favoritos") matchesCategory = !!p.isFeatured;
-      else if (activeCategory === "🆕 Novedades") matchesCategory = !!p.isNewArrival;
-      else if (activeCategory === "🔥 Promos") matchesCategory = !!p.isPromo;
-      else matchesCategory = p.category === activeCategory;
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === null || value === '' || value === 'Todos' || (key === 'page' && value === 1)) {
+          newSearchParams.delete(key)
+        } else {
+          newSearchParams.set(key, String(value))
+        }
+      })
+ 
+      return newSearchParams.toString()
+    },
+    [searchParams]
+  )
 
-      return matchesSearch && matchesCategory;
-    });
+  const handlePageChange = (page: number) => {
+    router.push(`${pathname}?${createQueryString({ page })}`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
-    // Ordenamiento
-    return filtered.sort((a, b) => {
-      if (sortOrder === "price-asc") return a.price - b.price;
-      if (sortOrder === "price-desc") return b.price - a.price;
-      // Default: Alfabético (name-asc)
-      return a.name.localeCompare(b.name);
-    });
-  }, [products, searchTerm, activeCategory, sortOrder]);
+  const handleFilterChange = useCallback((newFilters: Record<string, string | number | null>) => {
+    router.push(`${pathname}?${createQueryString({ ...newFilters, page: 1 })}`)
+  }, [pathname, createQueryString, router])
 
+  // Sync searchTerm with initialSearch when it changes (e.g. navigation)
   useEffect(() => {
-    setCurrentPage(1);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [searchTerm, activeCategory, sortOrder]);
+    setSearchTerm(initialSearch)
+  }, [initialSearch])
 
+  // Debounce search
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [currentPage]);
+    const timer = setTimeout(() => {
+      if (searchTerm !== initialSearch) {
+        handleFilterChange({ search: searchTerm })
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchTerm, initialSearch, handleFilterChange])
 
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const currentProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(totalCount / itemsPerPage)
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
@@ -75,8 +96,8 @@ export default function ClientProducts({ products }: { products: any[] }) {
         <div className="flex items-center gap-2 px-2">
           <span className="text-sm font-bold text-slate-500 whitespace-nowrap">Ordenar por:</span>
           <select 
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as any)}
+            value={initialSort}
+            onChange={(e) => handleFilterChange({ sort: e.target.value })}
             className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-pink-500 shadow-sm"
           >
             <option value="name-asc">Nombre (A-Z)</option>
@@ -90,19 +111,19 @@ export default function ClientProducts({ products }: { products: any[] }) {
         {categories.map(cat => (
           <button 
             key={cat} 
-            onClick={() => setActiveCategory(cat)}
-            className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors snap-start ${activeCategory === cat ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}>
+            onClick={() => handleFilterChange({ cat })}
+            className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors snap-start ${initialCategory === cat ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}>
             {cat}
           </button>
         ))}
       </div>
 
-      {filteredProducts.length === 0 ? (
+      {products.length === 0 ? (
         <div className="text-center py-20 text-slate-500 font-medium">No se encontraron productos.</div>
       ) : (
         <>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {currentProducts.map((product) => {
+          {products.map((product) => {
             const cartItem = items.find(i => i.id === product.id);
 
             return (
@@ -191,29 +212,40 @@ export default function ClientProducts({ products }: { products: any[] }) {
         {totalPages > 1 && (
           <div className="flex justify-center items-center gap-2 mt-8 py-4">
             <button 
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-4 py-2 rounded-lg bg-white border border-slate-200 disabled:opacity-50 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              className="px-4 py-2 rounded-lg bg-white border border-slate-200 disabled:opacity-50 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition flex items-center gap-1"
             >
-              Anterior
+              <ChevronLeft size={16} /> Anterior
             </button>
-            <div className="flex gap-1 overflow-x-auto max-w-[200px] hide-scrollbar">
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg text-sm font-bold transition ${currentPage === i + 1 ? 'bg-pink-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
-                >
-                  {i + 1}
-                </button>
-              ))}
+            <div className="flex gap-1 overflow-x-auto max-w-[200px] hide-scrollbar items-center">
+              {Array.from({ length: totalPages }).map((_, i) => {
+                const pageNum = i + 1;
+                // Show a limited range of pages if there are many
+                if (totalPages > 7) {
+                    if (pageNum !== 1 && pageNum !== totalPages && (pageNum < currentPage - 1 || pageNum > currentPage + 1)) {
+                        if (pageNum === currentPage - 2 || pageNum === currentPage + 2) return <span key={pageNum} className="px-1 text-slate-400">...</span>;
+                        return null;
+                    }
+                }
+
+                return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg text-sm font-bold transition ${currentPage === pageNum ? 'bg-pink-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                    >
+                      {pageNum}
+                    </button>
+                );
+              })}
             </div>
             <button 
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-lg bg-white border border-slate-200 disabled:opacity-50 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              className="px-4 py-2 rounded-lg bg-white border border-slate-200 disabled:opacity-50 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition flex items-center gap-1"
             >
-              Siguiente
+              Siguiente <ChevronRight size={16} />
             </button>
           </div>
         )}

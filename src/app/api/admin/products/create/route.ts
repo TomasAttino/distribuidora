@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { revalidatePath } from 'next/cache';
 
 export async function POST(req: Request) {
   try {
@@ -26,6 +27,10 @@ export async function POST(req: Request) {
         isActive: true, // Se crea activo por defecto si es manual
       },
     });
+
+    revalidatePath('/');
+    revalidatePath('/productos');
+    revalidatePath('/promociones');
 
     return NextResponse.json(product);
   } catch (error: any) {

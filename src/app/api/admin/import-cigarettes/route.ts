@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as xlsx from 'xlsx';
 import prisma from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
 
 export async function POST(request: Request) {
   try {
@@ -123,6 +124,10 @@ export async function POST(request: Request) {
             existingMap.set(prod.name.toLowerCase(), { id: 0, code: newCode, name: prod.name, price: prod.price });
         }
     }
+
+    revalidatePath('/');
+    revalidatePath('/productos');
+    revalidatePath('/promociones');
 
     return NextResponse.json({ success: true, created, updated, unchanged });
   } catch (error: any) {

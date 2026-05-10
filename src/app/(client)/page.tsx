@@ -3,7 +3,7 @@ import Link from 'next/link'
 import HomeCarousel from './HomeCarousel'
 import { Suspense } from 'react'
 
-export const revalidate = 10800;
+export const revalidate = false;
 
 export default async function HomePage() {
   const slides = await prisma.carouselSlide.findMany({

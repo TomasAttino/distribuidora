@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
 
 export async function PATCH(request: Request) {
   try {
@@ -13,6 +14,11 @@ export async function PATCH(request: Request) {
         where,
         data: { isActive: true }
       });
+
+      revalidatePath('/');
+      revalidatePath('/productos');
+      revalidatePath('/promociones');
+
       return NextResponse.json({ success: true, count: updated.count });
     }
 
@@ -22,6 +28,11 @@ export async function PATCH(request: Request) {
         where: { code: data.code },
         data: { isActive: true }
       });
+
+      revalidatePath('/');
+      revalidatePath('/productos');
+      revalidatePath('/promociones');
+
       return NextResponse.json({ success: true });
     }
 

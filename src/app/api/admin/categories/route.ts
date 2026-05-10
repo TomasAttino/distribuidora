@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
 
 export async function GET() {
   const categories = await prisma.category.findMany({ orderBy: { name: 'asc' } });
@@ -12,6 +13,11 @@ export async function POST(request: Request) {
     if (!name?.trim()) return NextResponse.json({ error: 'Nombre requerido' }, { status: 400 });
     
     const cat = await prisma.category.create({ data: { name: name.trim() } });
+
+    revalidatePath('/');
+    revalidatePath('/productos');
+    revalidatePath('/promociones');
+
     return NextResponse.json({ success: true, category: cat });
   } catch (error: any) {
     if (error.code === 'P2002') return NextResponse.json({ error: 'La categoría ya existe' }, { status: 400 });
@@ -23,6 +29,11 @@ export async function DELETE(request: Request) {
   try {
     const { id } = await request.json();
     await prisma.category.delete({ where: { id } });
+
+    revalidatePath('/');
+    revalidatePath('/productos');
+    revalidatePath('/promociones');
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: String(error) }, { status: 500 });

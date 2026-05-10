@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as xlsx from 'xlsx';
 import prisma from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
 
 export async function POST(request: Request) {
   try {
@@ -84,6 +85,10 @@ export async function POST(request: Request) {
             created++;
         }
     }
+
+    revalidatePath('/');
+    revalidatePath('/productos');
+    revalidatePath('/promociones');
 
     return NextResponse.json({ success: true, created, updated });
 
