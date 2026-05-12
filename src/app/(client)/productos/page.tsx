@@ -29,8 +29,8 @@ export default async function ProductsRoute({
 
   if (search) {
     where.OR = [
-      { name: { contains: search } },
-      { brand: { contains: search } }
+      { name: { contains: search, mode: 'insensitive' } },
+      { brand: { contains: search, mode: 'insensitive' } }
     ];
   }
 
