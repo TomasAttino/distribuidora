@@ -115,7 +115,8 @@ async function main() {
           name: p.name,
           description: p.description || null,
           price: parseNum(p.price) || 0,
-          category: p.category || null,
+          // Solo actualizamos categoría si el CSV trae algo
+          ...(p.category ? { category: p.category } : {}),
           brand: p.brand || null,
           imageUrl: p.imageUrl || null,
           isActive: parseBool(p.isActive),

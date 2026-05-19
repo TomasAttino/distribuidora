@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     
     const existingProductsList = await prisma.product.findMany({
         where: { name: { in: names } },
-        select: { id: true, code: true, name: true, price: true }
+        select: { id: true, code: true, name: true, price: true, category: true }
     });
     
     const existingMap = new Map(existingProductsList.map(p => [p.name.toLowerCase(), p]));
@@ -113,6 +113,7 @@ export async function POST(request: Request) {
                     code: newCode,
                     name: prod.name,
                     price: prod.price,
+                    category: "Cigarrillos",
                     isActive: true, // Assume cigarettes are active upon creation? The user said "cree el cigarrillo... a 6000 pesos", normally it might be active immediately. We'll set true.
                     isCigarette: true,
                     isNewArrival: true
@@ -121,7 +122,7 @@ export async function POST(request: Request) {
             created++;
             
             // Add to map to prevent duplicates within the same excel if it has duplicate rows somehow
-            existingMap.set(prod.name.toLowerCase(), { id: 0, code: newCode, name: prod.name, price: prod.price });
+            existingMap.set(prod.name.toLowerCase(), { id: 0, code: newCode, name: prod.name, price: prod.price, category: "Cigarrillos" });
         }
     }
 

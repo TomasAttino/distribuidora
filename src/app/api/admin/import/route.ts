@@ -93,11 +93,12 @@ export async function POST(request: Request) {
             // Buscamos si existe en la base que tiene las fotos
             const existingProduct = await prisma.product.findUnique({
                 where: { code: prod.code },
-                select: { id: true, price: true }
+                select: { id: true, price: true, category: true }
             });
 
             if (existingProduct) {
                 // SI EXISTE: Solo actualizamos el precio. 
+                // Ignoramos cualquier categoría o nombre del Excel para respetar lo que el usuario configuró en el panel.
                 await prisma.product.update({
                     where: { code: prod.code },
                     data: { price: prod.price }
@@ -110,8 +111,8 @@ export async function POST(request: Request) {
                         code: prod.code,
                         name: prod.name,
                         price: prod.price,
-                        category: "Otros",
-                        isActive: false, // Oculto hasta que le pongas foto
+                        category: "Otros", // Categoría por defecto para nuevos
+                        isActive: false,   // Oculto hasta que le pongan foto y categoría
                         isNewArrival: true
                     }
                 });
